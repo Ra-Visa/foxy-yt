@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Foxy YT - ទាញយក MP3 ពី YouTube ឥតគិតថ្លៃ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Kantumruy Pro', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col justify-between">
+    <!-- Header -->
+    <header class="p-6 border-b border-slate-800 text-center">
+        <h1 class="text-4xl font-extrabold text-amber-500 tracking-wide">🦊 Foxy YT</h1>
+        <p class="text-slate-400 text-sm mt-2">កម្មវិធីទាញយក Audio (MP3) ចេញពី YouTube យ៉ាងងាយស្រួល និងរហ័ស</p>
+    </header>
+
+    <!-- Main Section -->
+    <main class="max-w-xl mx-auto px-4 py-10 w-full">
+        <div class="bg-slate-800 p-6 rounded-2xl shadow-2xl border border-slate-700">
+            <label class="block text-slate-300 mb-2 font-medium">បញ្ចូល Link YouTube នៅទីនេះ៖</label>
+            <div class="flex flex-col sm:flex-row gap-2">
+                <input type="text" id="ytUrl" placeholder="https://www.youtube.com/watch?v=..." 
+                    class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-amber-500 text-white placeholder-slate-500">
+                <button onclick="convertVideo()" id="btnConvert" 
+                    class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-6 py-3 rounded-xl transition cursor-pointer whitespace-nowrap">
+                    ទាញយក MP3
+                </button>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div id="loading" class="hidden mt-6 text-center text-amber-400">
+                <p class="animate-pulse">⏳ កំពុងដំណើរការទាញយកទិន្នន័យ សូមរង់ចាំបន្តិច...</p>
+            </div>
+
+            <!-- Error Message -->
+            <div id="errorMsg" class="hidden mt-4 p-3 bg-red-500/20 border border-red-500/50 text-red-300 rounded-xl text-center text-sm"></div>
+
+            <!-- Result Card -->
+            <div id="resultCard" class="hidden mt-6 p-4 bg-slate-900 border border-slate-700 rounded-xl flex flex-col items-center text-center">
+                <img id="thumbImg" src="" alt="Thumbnail" class="w-full max-w-xs rounded-lg mb-3 shadow">
+                <h3 id="videoTitle" class="font-semibold text-white mb-4 text-sm sm:text-base"></h3>
+                <a id="downloadBtn" href="" target="_blank" rel="noopener noreferrer" 
+                    class="bg-green-500 hover:bg-green-600 text-white font-bold px-6 py-2.5 rounded-xl transition inline-block">
+                    ⬇️ ចុចត្រង់នេះដើម្បី Save MP3
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="p-4 text-center text-xs text-slate-500 border-t border-slate-800">
+        © 2026 Foxy YT - រក្សាសិទ្ធិគ្រប់យ៉ាង
+    </footer>
+
+    <script>
+        async function convertVideo() {
+            const url = document.getElementById('ytUrl').value.trim();
+            const loading = document.getElementById('loading');
+            const errorMsg = document.getElementById('errorMsg');
+            const resultCard = document.getElementById('resultCard');
+
+            if(!url) {
+                errorMsg.innerText = "សូមបញ្ចូល Link YouTube ជាមុនសិន!";
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            errorMsg.classList.add('hidden');
+            resultCard.classList.add('hidden');
+            loading.classList.remove('hidden');
+
+            try {
+                const res = await fetch('/api/convert', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ url: url })
+                });
+                const data = await res.json();
+
+                if(!res.ok) throw new Error(data.error || 'មានបញ្ហា');
+
+                document.getElementById('videoTitle').innerText = data.title;
+                document.getElementById('thumbImg').src = data.thumbnail;
+                document.getElementById('downloadBtn').href = data.download_url;
+
+                resultCard.classList.remove('hidden');
+            } catch(e) {
+                errorMsg.innerText = e.message;
+                errorMsg.classList.remove('hidden');
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
