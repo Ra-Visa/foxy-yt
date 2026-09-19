@@ -1,4 +1,5 @@
 import re
+import time
 import requests
 from flask import Flask, render_template, request, jsonify
 
@@ -8,7 +9,6 @@ API_KEY = "119b572848mshd141b98e8696c31p179d35jsnb1b213585552"
 API_HOST = "youtube-mp4-mp3-downloader.p.rapidapi.com"
 
 def extract_video_id(url):
-    # ទាញយក Video ID ចេញពី Link YouTube
     match = re.search(r'(?:v=|\/|vi=|\/v\/|shorts\/|youtu\.be\/)([0-9A-Za-z_-]{11})', url)
     return match.group(1) if match else None
 
@@ -33,7 +33,6 @@ def convert():
         'x-rapidapi-host': API_HOST
     }
 
-    # កំណត់ Parameter សម្រាប់ទាញយកជា MP3
     params = {
         'id': video_id,
         'format': 'mp3',
@@ -43,6 +42,7 @@ def convert():
     }
 
     try:
+        # ជំហានទី ១៖ ផ្ញើ Request ដើម្បីបង្កើត Task បំប្លែង
         api_url = f"https://{API_HOST}/api/v1/download"
         response = requests.get(api_url, headers=headers, params=params, timeout=15)
         
@@ -51,15 +51,26 @@ def convert():
 
         res_data = response.json()
 
-        # ទាញយកទិន្នន័យចេញពី API Response ថ្មី
         title = res_data.get('title') or res_data.get('videoTitle') or 'YouTube MP3 Audio'
         thumbnail = res_data.get('thumbnail') or f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
         
-        # ស្រង់យក Download Link
-        download_url = res_data.get('downloadUrl') or res_data.get('link') or res_data.get('url') or res_data.get('download_url')
+        download_url = res_data.get('downloadUrl') or res_data.get('link') or res_data.get('url')
+        progress_id = res_data.get('progressId')
+
+        # ជំហានទី ២៖ ប្រសិនបើទទួលបាន progressId យើងត្រូវរង់ចាំ (Polling) ឱ្យ API បំប្លែងចប់
+        if not download_url and progress_id:
+            progress_url = f"https://{API_HOST}/api/v1/progress"
+            for _ in range(15): # ព្យាយាមសួរ API រៀងរាល់ ១ វិនាទី (អតិបរមា ១៥ វិនាទី)
+                time.sleep(1)
+                p_res = requests.get(progress_url, headers=headers, params={'id': progress_id}, timeout=10)
+                if p_res.status_code == 200:
+                    p_data = p_res.json()
+                    download_url = p_data.get('downloadUrl') or p_data.get('link') or p_data.get('url')
+                    if download_url:
+                        break
 
         if not download_url:
-            return jsonify({'error': f'API មិនបានបញ្ជូន Link មកទេ៖ {res_data}'}), 500
+            return jsonify({'error': 'ការបំប្លែងប្រើពេលយូរពេក ឬមិនទទួលបាន Link ទាញយកឡើយ!'}), 500
 
         return jsonify({
             'title': title,
@@ -72,4 +83,4 @@ def convert():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
-        
+    
